@@ -9,9 +9,9 @@ from torchvision import transforms
 from torchvision import datasets
 from logger import Logger
 
-# 定义超参数
-batch_size = 128
-learning_rate = 1e-2
+
+batch_size = 128  # normally is 32
+learning_rate = 1e-2  # normally is 1e-3
 num_epoches = 20
 
 
@@ -19,7 +19,6 @@ def to_np(x):
     return x.cpu().data.numpy()
 
 
-# 下载训练集 MNIST 手写数字训练集
 train_dataset = datasets.MNIST(
     root='./data', train=True, transform=transforms.ToTensor(), download=True)
 
@@ -30,36 +29,37 @@ train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
 
-# 定义 Convolution Network 模型
+
 class Cnn(nn.Module):
     def __init__(self, in_dim, n_class):
         super(Cnn, self).__init__()
         self.conv = nn.Sequential(
-            nn.Conv2d(in_dim, 6, 3, stride=1, padding=1),
+            nn.Conv2d(in_dim, 6, 3, stride=1, padding=1),  # in_channels 28*28*1, out_channels 26*26*6, kernel_size,
             nn.ReLU(True),
             nn.MaxPool2d(2, 2),
-            nn.Conv2d(6, 16, 5, stride=1, padding=0),
-            nn.ReLU(True), nn.MaxPool2d(2, 2))
+            nn.Conv2d(6, 16, 5, stride=1, padding=0),  # in 13*13*6, out 9*9*16
+            nn.ReLU(True),
+            nn.MaxPool2d(2, 2), )
 
         self.fc = nn.Sequential(
             nn.Linear(400, 120), nn.Linear(120, 84), nn.Linear(84, n_class))
 
     def forward(self, x):
         out = self.conv(x)
-        out = out.view(out.size(0), -1)
-        out = self.fc(out)
+        out = out.view(out.size(0), -1)  # in 1*5*5*16 out 1*400
+        out = self.fc(out)  # out.size(0) = 1, from 1*5*5*16 to 1*400
         return out
 
 
-model = Cnn(1, 10)  # 图片大小是28x28
-use_gpu = torch.cuda.is_available()  # 判断是否有GPU加速
+model = Cnn(1, 10)
+use_gpu = torch.cuda.is_available()
 if use_gpu:
     model = model.cuda()
-# 定义loss和optimizer
+
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.SGD(model.parameters(), lr=learning_rate)
 logger = Logger('./logs')
-# 开始训练
+
 for epoch in range(num_epoches):
     print('epoch {}'.format(epoch + 1))
     print('*' * 10)
@@ -72,7 +72,7 @@ for epoch in range(num_epoches):
             label = label.cuda()
         img = Variable(img)
         label = Variable(label)
-        # 向前传播
+
         out = model(img)
         loss = criterion(out, label)
         running_loss += loss.data[0] * label.size(0)
@@ -80,7 +80,7 @@ for epoch in range(num_epoches):
         num_correct = (pred == label).sum()
         accuracy = (pred == label).float().mean()
         running_acc += num_correct.data[0]
-        # 向后传播
+
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -99,7 +99,7 @@ for epoch in range(num_epoches):
             logger.histo_summary(tag + '/grad', to_np(value.grad), step)
 
         # (3) Log the images
-        info = {'images': to_np(img.view(-1, 28, 28)[:10])}
+        info = {'images': to_np(img.view(-1, 28, 28)[:10])}  # img is 32*1*28*28 to 32*28*28, get the first 10 images
 
         for tag, images in info.items():
             logger.image_summary(tag, images, step)
@@ -131,5 +131,5 @@ for epoch in range(num_epoches):
         test_dataset)), eval_acc / (len(test_dataset))))
     print()
 
-# 保存模型
+
 torch.save(model.state_dict(), './cnn.pth')

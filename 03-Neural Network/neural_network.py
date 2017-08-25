@@ -9,10 +9,10 @@ from torchvision import transforms
 from torchvision import datasets
 
 batch_size = 32
-learning_rate = 1e-2
+learning_rate = 1e-2  # normally is 1e-3
 num_epoches = 50
 
-# 下载训练集 MNIST 手写数字训练集
+
 train_dataset = datasets.MNIST(
     root='./data', train=True, transform=transforms.ToTensor(), download=True)
 
@@ -23,22 +23,30 @@ train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
 
-# 定义简单的前馈神经网络
+
 class Neuralnetwork(nn.Module):
-    def __init__(self, in_dim, n_hidden_1, n_hidden_2, out_dim):
+    def __init__(self, in_dim, n_hidden_1, n_hidden_2, n_hidden_3, n_hidden_4, n_hidden_5, n_hidden_6, out_dim):
         super(Neuralnetwork, self).__init__()
         self.layer1 = nn.Linear(in_dim, n_hidden_1)
         self.layer2 = nn.Linear(n_hidden_1, n_hidden_2)
-        self.layer3 = nn.Linear(n_hidden_2, out_dim)
+        self.layer3 = nn.Linear(n_hidden_2, n_hidden_3)
+        self.layer4 = nn.Linear(n_hidden_3, n_hidden_4)
+        self.layer5 = nn.Linear(n_hidden_4, n_hidden_5)
+        self.layer6 = nn.Linear(n_hidden_5, n_hidden_6)
+        self.layer7 = nn.Linear(n_hidden_6, out_dim)
 
     def forward(self, x):
         x = self.layer1(x)
         x = self.layer2(x)
         x = self.layer3(x)
+        x = self.layer4(x)
+        x = self.layer5(x)
+        x = self.layer6(x)
+        x = self.layer7(x)
         return x
 
 
-model = Neuralnetwork(28 * 28, 300, 100, 10)
+model = Neuralnetwork(28 * 28, 3000, 1000, 3000, 1000, 3000, 1000, 10)
 if torch.cuda.is_available():
     model = model.cuda()
 
@@ -59,14 +67,14 @@ for epoch in range(num_epoches):
         else:
             img = Variable(img)
             label = Variable(label)
-        # 向前传播
+
         out = model(img)
         loss = criterion(out, label)
         running_loss += loss.data[0] * label.size(0)
         _, pred = torch.max(out, 1)
         num_correct = (pred == label).sum()
         running_acc += num_correct.data[0]
-        # 向后传播
+
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -100,5 +108,5 @@ for epoch in range(num_epoches):
         test_dataset)), eval_acc / (len(test_dataset))))
     print()
 
-# 保存模型
+
 torch.save(model.state_dict(), './neural_network.pth')
