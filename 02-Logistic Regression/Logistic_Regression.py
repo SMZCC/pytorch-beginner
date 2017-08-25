@@ -7,13 +7,12 @@ from torch.autograd import Variable
 from torch.utils.data import DataLoader
 from torchvision import transforms
 from torchvision import datasets
-import time
-# 定义超参数
+
 batch_size = 32
 learning_rate = 1e-3
 num_epoches = 100
 
-# 下载训练集 MNIST 手写数字训练集
+
 train_dataset = datasets.MNIST(
     root='./data', train=True, transform=transforms.ToTensor(), download=True)
 
@@ -24,7 +23,7 @@ train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
 
-# 定义 Logistic Regression 模型
+
 class Logstic_Regression(nn.Module):
     def __init__(self, in_dim, n_class):
         super(Logstic_Regression, self).__init__()
@@ -35,41 +34,40 @@ class Logstic_Regression(nn.Module):
         return out
 
 
-model = Logstic_Regression(28 * 28, 10)  # 图片大小是28x28
-use_gpu = torch.cuda.is_available()  # 判断是否有GPU加速
+model = Logstic_Regression(28 * 28, 10)
+use_gpu = torch.cuda.is_available()
 if use_gpu:
     model = model.cuda()
-# 定义loss和optimizer
+
 criterion = nn.CrossEntropyLoss()
 optimizer = optim.SGD(model.parameters(), lr=learning_rate)
 
-# 开始训练
+
 for epoch in range(num_epoches):
-    print('*' * 10)
     print('epoch {}'.format(epoch + 1))
-    since = time.time()
+    print('*' * 10)
     running_loss = 0.0
     running_acc = 0.0
     for i, data in enumerate(train_loader, 1):
-        img, label = data
-        img = img.view(img.size(0), -1)  # 将图片展开成 28x28
+        img, label = data  # label is also for each batch
+        img = img.view(img.size(0), -1)  # img.size(0) = 32, from 32*1*28*28 to 32*784
         if use_gpu:
             img = Variable(img).cuda()
             label = Variable(label).cuda()
         else:
             img = Variable(img)
             label = Variable(label)
-        # 向前传播
+        # print(label.size(0))
         out = model(img)
-        loss = criterion(out, label)
-        running_loss += loss.data[0] * label.size(0)
+        loss = criterion(out, label)  # loss is also for each batch
+        running_loss += loss.data[0] * label.size(0)  # label.size(0) is batch_size
         _, pred = torch.max(out, 1)
         num_correct = (pred == label).sum()
         running_acc += num_correct.data[0]
-        # 向后传播
-        optimizer.zero_grad()
+
+        optimizer.zero_grad()  # clear the gradients
         loss.backward()
-        optimizer.step()
+        optimizer.step()  # update weights and biases
 
         if i % 300 == 0:
             print('[{}/{}] Loss: {:.6f}, Acc: {:.6f}'.format(
@@ -98,8 +96,7 @@ for epoch in range(num_epoches):
         eval_acc += num_correct.data[0]
     print('Test Loss: {:.6f}, Acc: {:.6f}'.format(eval_loss / (len(
         test_dataset)), eval_acc / (len(test_dataset))))
-    print('Time:{:.1f} s'.format(time.time() - since))
     print()
 
-# 保存模型
+
 torch.save(model.state_dict(), './logstic.pth')
